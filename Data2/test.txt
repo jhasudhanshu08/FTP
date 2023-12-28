@@ -1,0 +1,11 @@
+ftp.prescinto.com
+Radiance
+Welcome@123
+cd /DJB/Haidarpur/chemical_house/Backup
+lcd C:\Users\jhasu\OneDrive\Desktop\Solar_Logiq\Git 2\FTP\FTP\Data2
+binary
+prompt n
+hash
+glob
+mget *
+quit

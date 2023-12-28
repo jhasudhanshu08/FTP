@@ -92,7 +92,7 @@ const fs = require('fs');
 const ftp = require('basic-ftp');
 
 const sourceDir = '/DJB/Haidarpur/chemical_house/Backup/300000000/'; // Replace with the source directory path on the FTP server
-const targetDir = 'C:/Users/jhasu/OneDrive/Desktop/Radiance/Data2'; // Replace with the target directory path
+const targetDir = 'C:/Users/jhasu/OneDrive/Desktop/Solar_Logiq/Git 2/FTP/FTP/Data2'; // Replace with the target directory path
 const numberOfFilesToCopy = 3100;
 let filesCopied = 0;
 
@@ -137,6 +137,6 @@ downloadFiles();
 const interval = 5 * 60 * 1000; // 5 minutes in milliseconds
 setInterval(downloadFiles, interval);
 
-app.listen(7001, () => {
-  console.log('server running on port 7001');
+app.listen(7000, () => {
+  console.log('server running on port 7000');
 });
