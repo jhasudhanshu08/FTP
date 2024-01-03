@@ -18,7 +18,6 @@ const downloadDirectory = async (remoteDir, localDir) => {
     await client.cd(remoteDir);
 
     const files = await client.list();
-    console.log("files", files)
 
     for (const file of files) {
       console.log("file.isDirectory", file.isDirectory);
