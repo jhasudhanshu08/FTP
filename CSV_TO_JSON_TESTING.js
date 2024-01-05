@@ -36,7 +36,7 @@ fs.readdir(sourceDirectory, (err, files) => {
           // console.log("response", res.split(';')[0])
           dataArray.push(res.split(';'));
         })
-        // console.log("dataArray", dataArray)
+        console.log("dataArray", dataArray)
         // console.log("jsonFile", jsonFile)
 
         for(let i = 0; i < dataArray.length; i++) {
@@ -47,20 +47,25 @@ fs.readdir(sourceDirectory, (err, files) => {
               ftpId: dataArray[i][3], 
               data: (() => {
                 if(dataArray[i+2][0].includes("/") && i >= 3) {
+                  
                   dataArray[i+2].forEach(data => {
+                    console.log("data", data)
                     for(let jsonData of jsonFile) {
-                      if(jsonData.category === "MFM") {
-                        // console.log("jsonData.category", jsonData.category)
+                      // console.log("dataArray[i][1]", dataArray[i+2])
+                      if(jsonData.category === dataArray[i][1] && dataArray[i][1] === "Meter") {
+                        // console.log("jsonData.category", jsonData.category, " - ", dataArray[i][1])
                         for(let key in jsonData.data) {
-                          // console.log("key", key)
+                          // console.log("jsonData.data[key] : ", jsonData.data[key])
+                          // console.log("data : ", data)
+
                           innerDataObject[jsonData.data[key]] = data
                         }
-                        console.log("innerDataObject", innerDataObject);
-                        return innerDataObject;
+                        // console.log("innerDataObject", innerDataObject);
                       }
                     }
                   })
                 }
+                return [innerDataObject];
                 
               })()
             })
@@ -71,7 +76,7 @@ fs.readdir(sourceDirectory, (err, files) => {
 
           }
         }
-        console.log("object", arrayOfObj)
+        console.log("object", arrayOfObj[0])
 
             // for(let i = 0; i < dataArray.length; i++) {
           
