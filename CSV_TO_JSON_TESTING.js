@@ -7,10 +7,6 @@ const sourceDirectory = 'C:/Users/jhasu/OneDrive/Desktop/Solar_Logiq/Git 2/FTP/F
 const destinationDirectory = 'C:/Users/jhasu/OneDrive/Desktop/Solar_Logiq/Git 2/FTP/FTP/Data2/JSON';
 
 let dataArray = [];
-let object = {};
-let arrayOfObj = [];
-let innerDataObject = {};
-let resultArray = [];
 // Read all CSV files in the source directory
 fs.readdir(sourceDirectory, (err, files) => {
   if (err) {
@@ -34,14 +30,10 @@ fs.readdir(sourceDirectory, (err, files) => {
         // Split the CSV data by lines and take the first line
         const firstLine = data.split('\n');
         firstLine.forEach(res => {
-          // console.log("response", res.split(';')[0])
           dataArray.push(res.split(';'));
         })
-        console.log("dataArray", dataArray)
-        // console.log("jsonFile", jsonFile)
         let resultArray = [];
-
-        let currentResultObj; // Keep track of the current result object
+        let currentResultObj;
 
         for (let i = 3; i < dataArray.length; i++) {
           if (dataArray[i][0] === 'deviceType') {
@@ -53,57 +45,68 @@ fs.readdir(sourceDirectory, (err, files) => {
               deviceType: deviceType,
               name: name,
               ftpId: ftpId,
-              data: [] // Initialize data as an array
+              data: []
             };
 
             resultArray.push(currentResultObj);
 
-            // Find the corresponding category in jsonFile
             let categoryIndex = jsonFile.findIndex(item => item.category === deviceType);
 
             if (categoryIndex !== -1) {
               let categoryDataKeys = Object.values(jsonFile[categoryIndex].data);
 
-              let dataObj = {}; // Initialize dataObj as a new object
-
-              for (let j = 0; j < categoryDataKeys.length; j++) {
-                let key = categoryDataKeys[j];
-                let value = dataArray[i + 2][j];
-
-                // Skip the case where key is an empty string
-                if (key !== "") {
-                  dataObj[key] = value;
+              function dataArrayObjects(k) {
+                let dataObj = {};
+                for (let j = 0; j < categoryDataKeys.length; j++) {
+                  let key;
+                  let value;
+                  if (j === 0) {
+                    key = categoryDataKeys[j];
+                    value = dataArray[i + 2 + k][j];
+                  } else {
+                    key = categoryDataKeys[j];
+                    value = Number(dataArray[i + 2 + k][j]);
+                  }
+                  if (key !== "" && !isNaN(value) || key === "timestamp") {
+                    dataObj[key] = value;
+                  }
+                }
+                // Insert the object only if it's not empty
+                if (Object.keys(dataObj).length > 1) {
+                  currentResultObj.data.push(dataObj);
                 }
               }
-
-              currentResultObj.data.push(dataObj);
+              let k = 0;
+              while (dataArray[i + 2 + k][0].includes("/")) {
+                dataArrayObjects(k);
+                k++;
+              }
+              // Skip the next array if it starts with "deviceType"
+              if (dataArray[i + 4] && dataArray[i + 4][0] === 'deviceType') {
+                i += 3; // Skip the next array
+              }
             }
-
-            // Skip the next array if it starts with "deviceType"
-            if (dataArray[i + 4] && dataArray[i + 4][0] === 'deviceType') {
-              i += 3; // Skip the next array
-            }
-          } else if (dataArray[i][0].includes('/') && dataArray[i + 2]) {
-            console.log("dataArray[i][0]", dataArray[i][0])
-            // If the 0 index includes "/" and the array at i + 2 exists
+          } else if (dataArray[i][0].includes('/')) {
             let dataObj = {};
             let dataObjKeys = currentResultObj.data[0];
 
-            for (let j = 0; j < dataObjKeys.length; j++) {
+            for (let j = 0; j < dataObjKeys?.length; j++) {
               let key = dataObjKeys[j];
               let value = dataArray[i + 2][j];
 
-              // Skip the case where key is an empty string
-              if (key !== "") {
+              if (key !== "" && !isNaN(value) || key === "timestamp") {
                 dataObj[key] = value;
               }
             }
 
-            currentResultObj.data.push(dataObj);
+            // Insert the object only if it's not empty
+            if (Object.keys(dataObj).length > 1) {
+              currentResultObj.data.push(dataObj);
+            }
           }
         }
 
-        console.log(resultArray[0]);
+        console.log(resultArray);
 
       });
     }
@@ -227,3 +230,6 @@ fs.readdir(sourceDirectory, (err, files) => {
 //     }
 //   ]
 // }
+
+
+
