@@ -97,6 +97,7 @@ const unzipFiles = () => {
 };
 
 const convertCsvToJson = () => {
+
 console.log("convertCsvToJson called !!");
   fs1.readdir(sourceDirectory, (err, files) => {
     if (err) {
@@ -107,7 +108,6 @@ console.log("convertCsvToJson called !!");
     files.forEach((file) => {
       let resultArray = [];
       let dataArray = [];
-      // if(file == "SLP00BA23G_010124_001534.csv") {
 
       if (path.extname(file) === ".csv") {
         const csvFilePath = path.join(sourceDirectory, file);
@@ -117,7 +117,6 @@ console.log("convertCsvToJson called !!");
             console.error(`Error reading CSV file ${file}:`, err);
             return;
           }
-          // console.log("data : -------------------------", data);
           const firstLine = data.split("\n");
           dataArray = [];
           firstLine.forEach((res) => {
@@ -148,7 +147,6 @@ console.log("convertCsvToJson called !!");
                 let categoryDataKeys = Object.values(
                   jsonFile[categoryIndex].data
                 );
-                // console.log("categoryDataKeys", categoryDataKeys)
 
                 function dataArrayObjects(k) {
                   let dataObj = {};
@@ -182,29 +180,8 @@ console.log("convertCsvToJson called !!");
                 }
               }
             }
-            // else if (dataArray[i][0].includes('/')) {
-            //   let dataObj = {};
-            //   let dataObjKeys = currentResultObj.data[0];
-
-            //   for (let j = 0; j < dataObjKeys?.length; j++) {
-            //     let key = dataObjKeys[j];
-            //     let value = dataArray[i + 2][j];
-
-            //     if (key !== "" && !isNaN(value) || key === "timestamp") {
-            //       dataObj[key] = value;
-            //     }
-            //   }
-
-            //   if (Object.keys(dataObj).length > 1) {
-            //     currentResultObj.data.push(dataObj);
-            //   }
-            // }
           }
-          // if(file == "SLP00BA23G_010124_001534.csv") {
-          // console.log(resultArray.length);
           console.log("resultArray", resultArray[0]);
-          // console.log("resultArray JSON", JSON.stringify(resultArray, null, 2))
-
 
           const commonFunctionForAllDevices = async (result, type) => {
             
@@ -280,21 +257,9 @@ console.log("convertCsvToJson called !!");
                 commonFunctionForAllDevices(result, "scbs")
               }
             })
-            
           }
-
-          
-
-          
-
-          
-          // resultArray = []
-          // }
         });
       }
-      // console.log("files", resultArray)
-      // }
-      // saveJsonFile(resultArray, fileData);
     });
   });
 };
