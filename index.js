@@ -22,25 +22,41 @@ const outputDirectory = localDirectory + "/unzip";
 const sourceDirectory = outputDirectory;
 const destinationDirectory = localDirectory + "/JSON";
 
-const downloadDirectory = async (remoteDir, localDir, fileLimit = 10) => {
+const plantProfile = await PlantProfile.find({ plantId: plantIds });
+if (plantProfile[0] != undefined) {
+  plantProfile[0].dataLogger.forEach((logger) => {
+    let remoteDirectory = logger.remotePath;
+    let localDirectory = logger.localPath;
+    downloadAndSchedule(remoteDirectory, localDirectory);
+  });
+}
+
+const downloadDirectory = async (remoteDir, localDir, itemLimit = 10) => {
   const client = new ftp.Client();
+  let itemsDownloaded = 0;
 
   try {
     await client.access(config);
     await client.cd(remoteDir);
 
-    const files = await client.list();
+    const items = await client.list();
 
-    // Limit the number of files to download
-    const filesToDownload = files.slice(0, fileLimit);
+    for (const item of items) {
+      if (itemsDownloaded >= itemLimit) {
+        break; // Exit the loop if the item limit is reached
+      }
 
-    for (const file of filesToDownload) {
-      const remotePath = path.join(remoteDir, file.name);
-      const localPath = path.join(localDir, file.name);
+      const remotePath = path.join(remoteDir, item.name);
+      const localPath = path.join(localDir, item.name);
 
-      if (file.isDirectory) {
+      if (item.isDirectory) {
+        // Recursively download subdirectories
         await fs.mkdir(localPath, { recursive: true });
-        await downloadDirectory(remotePath, localPath, fileLimit);
+        await downloadDirectory(
+          remotePath,
+          localPath,
+          itemLimit - itemsDownloaded
+        );
       } else {
         try {
           await fs.access(localPath);
@@ -48,6 +64,11 @@ const downloadDirectory = async (remoteDir, localDir, fileLimit = 10) => {
         } catch (err) {
           await client.downloadTo(localPath, remotePath);
           console.log(`Downloaded: ${remotePath}`);
+          itemsDownloaded++;
+
+          if (itemsDownloaded >= itemLimit) {
+            break; // Exit the loop if the item limit is reached
+          }
         }
       }
     }
@@ -97,8 +118,7 @@ const unzipFiles = () => {
 };
 
 const convertCsvToJson = () => {
-
-console.log("convertCsvToJson called !!");
+  console.log("convertCsvToJson called !!");
   fs1.readdir(sourceDirectory, (err, files) => {
     if (err) {
       console.error("Error reading source directory:", err);
@@ -183,81 +203,99 @@ console.log("convertCsvToJson called !!");
           }
           console.log("resultArray", resultArray[0]);
 
-          const commonFunctionForAllDevices = async (result, type) => {
-            
-            const plantProfiles = await PlantProfile.find({ plantId: plantIds });
-
-            if(plantProfiles[0] != undefined) {
-              if(plantProfiles[0][type].details[0] != undefined) {
-                  let ftpIndex = plantProfiles[0][type].details.findIndex((item) => item.ftpId === result.ftpId);
-                  if(ftpIndex != -1) {
-                    let deviceNoData = plantProfiles[0][type].details[ftpIndex].id;
-                    let latestMeterDoc = await Meter.aggregate([
-                      { $match: { plantId: plantIds, deviceNo: deviceNoData } },
-                      { $sort: { timestamp: -1 } }, 
-                      { $limit: 1 } 
-                    ]);
-                    if(latestMeterDoc[0] != undefined) {
-                      if(result.data[0] != undefined) {
-                        result.data.forEach(async data => {
-                          let dbObject = {};
-                          if(Object.keys(data).length > 1) {
-                            if(latestMeterDoc[0].timestamp < data?.timestamp) {
-                              dbObject = {
-                                timestampSync: data.timestamp,
-                                loggerNo: 1, // loop on logger will be run in the begining
-                                plantId: plantIds,
-                                deviceType: 200,
-                                deviceNo: plantProfiles[0][type].details[ftpIndex].id,
-                                errorFlag: 0,
-                                ...data
-                              }
-                            }
+          const commonFunctionForAllDevices = async (
+            result,
+            type,
+            plantProfile
+          ) => {
+            if (plantProfile[0] != undefined) {
+              if (plantProfile[0][type].details[0] != undefined) {
+                let ftpIndex = plantProfile[0][type].details.findIndex(
+                  (item) => item.ftpId === result.ftpId
+                );
+                if (ftpIndex != -1) {
+                  let deviceNoData =
+                    plantProfile[0][type].details[ftpIndex].id;
+                  let latestMeterDoc = await Meter.aggregate([
+                    { $match: { plantId: plantIds, deviceNo: deviceNoData } },
+                    { $sort: { timestamp: -1 } },
+                    { $limit: 1 },
+                  ]);
+                  if (latestMeterDoc[0] != undefined) {
+                    if (result.data[0] != undefined) {
+                      result.data.forEach(async (data) => {
+                        let dbObject = {};
+                        if (Object.keys(data).length > 1) {
+                          if (latestMeterDoc[0].timestamp < data?.timestamp) {
+                            dbObject = {
+                              timestampSync: data.timestamp,
+                              loggerNo: 1, // loop on logger will be run in the begining
+                              plantId: plantIds,
+                              deviceType: 200,
+                              deviceNo:
+                                plantProfile[0][type].details[ftpIndex].id,
+                              errorFlag: 0,
+                              ...data,
+                            };
                           }
-                          else {
-                            if(latestMeterDoc[0].timestamp < data?.timestamp) {
-                              dbObject = {
-                                timestampSync: data.timestamp,
-                                loggerNo: 1, // loop on logger will be run in the begining
-                                plantId: plantIds,
-                                deviceType: 200,
-                                deviceNo: plantProfiles[0][type].details[ftpIndex].id,
-                                errorFlag: 1,
-                              }
-                            }
+                        } else {
+                          if (latestMeterDoc[0].timestamp < data?.timestamp) {
+                            dbObject = {
+                              timestampSync: data.timestamp,
+                              loggerNo: 1, // loop on logger will be run in the begining
+                              plantId: plantIds,
+                              deviceType: 200,
+                              deviceNo:
+                                plantProfile[0][type].details[ftpIndex].id,
+                              errorFlag: 1,
+                            };
                           }
-                          let dbType = type.replace(/\b\w/g, (match) => match.toUpperCase())
-                          if(type === "meter") {
-                            dbObject.solutionFlag = "MFM"
-                          }
-                          if(Object.keys(dbObject).length != 0) {
-                            await dbType.insertOne(dbObject);
-                          }
-
-                        })
-                      }
+                        }
+                        let dbType = type.replace(/\b\w/g, (match) =>
+                          match.toUpperCase()
+                        );
+                        if (type === "meter") {
+                          dbObject.solutionFlag = "MFM";
+                        }
+                        if (Object.keys(dbObject).length != 0) {
+                          await dbType.insertOne(dbObject);
+                        }
+                      });
                     }
                   }
+                }
               }
             }
-          }
+          };
           // Now Database saving start
           const dataBaseWork = async () => {
-            resultArray.forEach(async result => {
-              if(result.deviceType === "Meter") {
-                commonFunctionForAllDevices(result, "meter")
+            resultArray.forEach(async (result) => {
+              if (result.deviceType === "Meter") {
+                commonFunctionForAllDevices(result, "meter", plantProfile);
               }
-              if(result.deviceType === "Inverter") {
-                commonFunctionForAllDevices(result, "inverter")
+              if (result.deviceType === "Inverter") {
+                commonFunctionForAllDevices(result, "inverter", plantProfile);
               }
-              if(result.deviceType === "Weather") {
-                commonFunctionForAllDevices(result, "weatherStation")
+              if (result.deviceType === "Weather") {
+                commonFunctionForAllDevices(
+                  result,
+                  "weatherStation",
+                  plantProfile
+                );
               }
-              if(result.deviceType === "SMB") {
-                commonFunctionForAllDevices(result, "scbs")
+              if (result.deviceType === "SMB") {
+                commonFunctionForAllDevices(result, "scbs", plantProfile);
               }
-            })
-          }
+            });
+          };
+
+          fs1.unlink(csvFilePath, (err) => {
+            if (err) {
+              console.error(`Error deleting CSV file ${file}:`, err);
+            } else {
+              console.log(`CSV file ${file} deleted successfully`);
+            }
+          });
         });
       }
     });
@@ -265,20 +303,22 @@ console.log("convertCsvToJson called !!");
 };
 
 // Example usage
-const downloadAndSchedule = async () => {
+async function downloadAndSchedule(remoteDirectory, localDirectory) {
   await downloadDirectory(remoteDirectory, localDirectory, 10);
+  unzipFiles();
+  convertCsvToJson();
   setInterval(async () => {
     await downloadDirectory(remoteDirectory, localDirectory, 10);
+    unzipFiles();
+    convertCsvToJson();
   }, 5 * 60 * 1000);
 
-  unzipFiles();
-  setTimeout(() => {
-  }, 3000)
-
-};
-
+  setTimeout(() => {}, 3000);
+}
+// await downloadDirectory(remoteDirectory, localDirectory, 10);
+//   unzipFiles();
+//   convertCsvToJson();
 // downloadAndSchedule()
-convertCsvToJson();
 
 app.listen(7003, () => {
   console.log("Server running on port 7003");

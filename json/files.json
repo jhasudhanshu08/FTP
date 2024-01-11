@@ -124,7 +124,6 @@
         "category": "SMB",
         "data": {
             "timestamp": "timestamp",
-
             "Input Voltage": "voltage",
             "Total Input Current": "current",
             "Total Input Power": "power",

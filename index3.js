@@ -10,33 +10,40 @@ const config = {
   password: 'Welcome@123',
 };
 
-const downloadDirectory = async (remoteDir, localDir) => {
+const downloadDirectory = async (remoteDir, localDir, itemLimit = 10) => {
   const client = new ftp.Client();
+  let itemsDownloaded = 0;
 
   try {
     await client.access(config);
     await client.cd(remoteDir);
 
-    const files = await client.list();
+    const items = await client.list();
 
-    for (const file of files) {
-      console.log("file.isDirectory", file.isDirectory);
-      const remotePath = path.join(remoteDir, file.name);
-      const localPath = path.join(localDir, file.name);
+    for (const item of items) {
+      if (itemsDownloaded >= itemLimit) {
+        break; // Exit the loop if the item limit is reached
+      }
 
-      if (file.isDirectory) {
+      const remotePath = path.join(remoteDir, item.name);
+      const localPath = path.join(localDir, item.name);
+
+      if (item.isDirectory) {
         // Recursively download subdirectories
         await fs.mkdir(localPath, { recursive: true });
-        await downloadDirectory(remotePath, localPath);
+        await downloadDirectory(remotePath, localPath, itemLimit - itemsDownloaded);
       } else {
-        // Check if the file already exists in the local directory
         try {
           await fs.access(localPath);
           console.log(`File already exists: ${localPath}`);
         } catch (err) {
-          // File doesn't exist, download it
           await client.downloadTo(localPath, remotePath);
           console.log(`Downloaded: ${remotePath}`);
+          itemsDownloaded++;
+
+          if (itemsDownloaded >= itemLimit) {
+            break; // Exit the loop if the item limit is reached
+          }
         }
       }
     }
